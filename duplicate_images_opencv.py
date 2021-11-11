@@ -151,6 +151,7 @@ if __name__ == '__main__':
         SR, MS, path, autoremove, recursive, processors = settingConfiguration(config)
 
     #Generate lists containing cv2.imread() and titles.
+    print('Agrouping .jpg and .png files in the folders...')
     all_images = []
     images_names = []
     if not recursive:
@@ -178,6 +179,7 @@ if __name__ == '__main__':
         for i in range(len(all_images)):
             img1 = all_images[i]
             title1 = images_names[i]
+            print(f"Preparing {title1}...")
             inst = ImageChecker(SR, MS, img1, title1)
             with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
                 processes = executor.map(inst.main,((img2,title2) for img2,title2 in zip(all_images[i+1:],images_names[i+1:])))
