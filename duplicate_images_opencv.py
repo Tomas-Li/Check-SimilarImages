@@ -103,49 +103,52 @@ def settingConfiguration(config:configparser.ConfigParser):
     try:
         autoremove = config['Options'].getboolean('autoremove')
     except ValueError:
-        print(f"ValueError in ConfigParser -> autoremove is not a bool! (True or False)")
+        print(f"ValueError in ConfigParser -> Autoremove is not a bool! (True or False)")
         print("The code will proceed with the default fallback value:")
         autoremove = False
     
     try:
         recursive = config['Options'].getboolean('recursive')
     except ValueError:
-        print(f"ValueError in ConfigParser -> recursive is not a bool! (True or False)")
+        print(f"ValueError in ConfigParser -> Recursive is not a bool! (True or False)")
         print("The code will proceed with the default fallback value:")
         recursive = False
     
     try:
-        #!ImageChecker.SIMILARITY_RATIO = config['Options'].getfloat('similarity_ratio')
         SIMILARITY_RATIO = config['Options'].getfloat('similarity_ratio')
     except ValueError:
-        print(f"ValueError in ConfigParser -> SIMILARITY_RATIO is not a valid numerical value!")
+        print(f"ValueError in ConfigParser -> SIMILARITY_RATIO hasn't a valid numerical value!")
         print("The code will proceed with the default fallback value:")
-        #!ImageChecker.SIMILARITY_RATIO = 0.6
         SIMILARITY_RATIO = 0.6
 
     try:
-        #!ImageChecker.MINIMUM_SIMILARITY = config['Options'].getint('minimum_similarity')
         MINIMUM_SIMILARITY = config['Options'].getint('minimum_similarity')
     except ValueError:
-        print(f"ValueError in ConfigParser -> MINIMUM_SIMILARITY is not a valid numerical value!")
+        print(f"ValueError in ConfigParser -> MINIMUM_SIMILARITY hasn't a valid numerical value!")
         print("The code will proceed with the default fallback value:")
-        #!ImageChecker.MINIMUM_SIMILARITY = 50
         MINIMUM_SIMILARITY = 50
+
+    try:
+        processors = config['Options'].getint('processors')
+    except ValueError:
+        print(f"ValueError in ConfigParser -> processors hasn't a valid numerical value!")
+        print("The code will proceed with the default fallback value:")
+        processors = 4
     
-    return SIMILARITY_RATIO, MINIMUM_SIMILARITY, path, autoremove, recursive
+    return SIMILARITY_RATIO, MINIMUM_SIMILARITY, path, autoremove, recursive, processors
 
 
 if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read('ConfigFile.ini')
     try:
-        SR, MS, path, autoremove, recursive = settingConfiguration(config)
+        SR, MS, path, autoremove, recursive, processors = settingConfiguration(config)
     except KeyError:
         aux = argv[0].split(os.sep)
         aux.pop()
         aux = os.sep.join(aux)
         config.read(f'{aux}{os.sep}ConfigFile.ini')      
-        SR, MS, path, autoremove, recursive = settingConfiguration(config)
+        SR, MS, path, autoremove, recursive, processors = settingConfiguration(config)
 
     #Generate lists containing cv2.imread() and titles.
     all_images = []
@@ -176,11 +179,10 @@ if __name__ == '__main__':
             img1 = all_images[i]
             title1 = images_names[i]
             inst = ImageChecker(SR, MS, img1, title1)
-            with concurrent.futures.ProcessPoolExecutor() as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=processors) as executor:
                 processes = executor.map(inst.main,((img2,title2) for img2,title2 in zip(all_images[i+1:],images_names[i+1:])))
                 for result in processes:
                     try:
                         file.write(result)
                     except TypeError:
                         pass
-
