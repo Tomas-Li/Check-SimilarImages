@@ -1,0 +1,4 @@
+*
+!.gitignore
+!duplicate_images_opencv.py
+!ConfigFile.ini
