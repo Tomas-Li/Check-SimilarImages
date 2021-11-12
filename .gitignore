@@ -2,3 +2,5 @@
 !.gitignore
 !duplicate_images_opencv.py
 !ConfigFile.ini
+!requirements.txt
+!README.md

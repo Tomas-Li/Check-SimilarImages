@@ -1,6 +1,9 @@
-#!Aclarar que solo toma formatos png y jpg, pero puede agregarse otros formatos manualmente en el codigo (quizas con el configure?)
 """
 Program for a fast comparation of similar features between images in a given path. This code uses concurrent.futures (multiprocesing) and OpenCV as it's main libraries.
+The processes of comparing images is quite taxing so I recommend:
+    * Don't use all your processors unless you aren't going to use the computer while the code is running
+    * Try to not use the recursive functionality, as it will reduce the performance quite significatly
+The program only looks for .jpg and .png formats. If you want another format to be taken into account look for the comment: '#Generate lists containing cv2.imread() and titles.' and add another loop with the same format as the two presents but with the format that you want to be included.
 """
 
 # Useful reference links:
@@ -17,15 +20,15 @@ Program for a fast comparation of similar features between images in a given pat
 import os
 import cv2
 import glob
+import time
 import configparser
 import concurrent.futures
 from sys import argv
+from math import modf
 
 
 class ImageChecker():
-    #Needed variables in all instances
-    #!SIMILARITY_RATIO=None #!Roto
-    #!MINIMUM_SIMILARITY=None #!Roto
+    #Needed variables in all instances that can be defined statically
     SIFT = cv2.SIFT_create()
     INDEX_PARAMS = dict(algorithm=0, trees=5)
     SEARCH_PARAMS = dict()
@@ -41,7 +44,7 @@ class ImageChecker():
         self.not_equal = True
 
 
-    def equalImgs(self,img2,title2) -> bool:
+    def equalImgs(self,img2,title2):
         """This method check if two images have the same size and channels, then substract their pixels and if the substraction is null they are completly equals"""
         if self.img1.shape == img2.shape:
             difference = cv2.subtract(self.img1, img2)
@@ -75,7 +78,7 @@ class ImageChecker():
             return f"{self.title1} | {title2} : {similarity}%\n"
 
 
-    def main(self,img2title2:tuple): 
+    def main(self,img2title2): 
         #!
         print(f"Checking {self.title1} vs {img2title2[1]}")
         #!Call first function and make it equal to a bool
@@ -87,7 +90,7 @@ class ImageChecker():
         return result
 
 
-def settingConfiguration(config:configparser.ConfigParser):
+def settingConfiguration(config):
     """Function in charge of setting the Optional configuration from the ConfigFile.ini"""
     if config['Options']['path']:
         path = config['Options']['path']
@@ -101,35 +104,35 @@ def settingConfiguration(config:configparser.ConfigParser):
         path = f'.{os.sep}'
     
     try:
-        autoremove = config['Options'].getboolean('autoremove')
+        autoremove = config['Options'].getboolean('autoremove', fallback=False)
     except ValueError:
         print(f"ValueError in ConfigParser -> Autoremove is not a bool! (True or False)")
         print("The code will proceed with the default fallback value:")
         autoremove = False
     
     try:
-        recursive = config['Options'].getboolean('recursive')
+        recursive = config['Options'].getboolean('recursive', fallback=False)
     except ValueError:
         print(f"ValueError in ConfigParser -> Recursive is not a bool! (True or False)")
         print("The code will proceed with the default fallback value:")
         recursive = False
     
     try:
-        SIMILARITY_RATIO = config['Options'].getfloat('similarity_ratio')
+        SIMILARITY_RATIO = config['Options'].getfloat('similarity_ratio', fallback=0.6)
     except ValueError:
         print(f"ValueError in ConfigParser -> SIMILARITY_RATIO hasn't a valid numerical value!")
         print("The code will proceed with the default fallback value:")
         SIMILARITY_RATIO = 0.6
 
     try:
-        MINIMUM_SIMILARITY = config['Options'].getint('minimum_similarity')
+        MINIMUM_SIMILARITY = config['Options'].getint('minimum_similarity', fallback= 50)
     except ValueError:
         print(f"ValueError in ConfigParser -> MINIMUM_SIMILARITY hasn't a valid numerical value!")
         print("The code will proceed with the default fallback value:")
         MINIMUM_SIMILARITY = 50
 
     try:
-        processors = config['Options'].getint('processors')
+        processors = config['Options'].getint('processors', fallback=4)
     except ValueError:
         print(f"ValueError in ConfigParser -> processors hasn't a valid numerical value!")
         print("The code will proceed with the default fallback value:")
@@ -139,6 +142,7 @@ def settingConfiguration(config:configparser.ConfigParser):
 
 
 if __name__ == '__main__':
+    START_TIME = time.time()
     config = configparser.ConfigParser()
     config.read('ConfigFile.ini')
     try:
@@ -173,6 +177,9 @@ if __name__ == '__main__':
             images_names.append(''.join(f.split(path)[1]))
             all_images.append(image)
 
+    n_files = len(all_images)
+    print(f"There are {n_files}, the expected time needed is [#!Ver] ")
+
     #Opening writing file
     with open(f'{path}Similarities.txt','w', encoding='utf-8-sig') as file:
         #Main loop
@@ -188,3 +195,16 @@ if __name__ == '__main__':
                         file.write(result)
                     except TypeError:
                         pass
+    
+    END_TIME = time.time()
+    print(f"Start time:{time.strftime('%a, %d %b %Y %H:%M:%S' ,time.localtime(START_TIME))}")
+    print(f"End time:{time.strftime('%a, %d %b %Y %H:%M:%S' ,time.localtime(END_TIME))}")
+    scs = END_TIME - START_TIME
+    segundos,minutos = modf(scs/60)
+    segundos = round(segundos * 60)
+
+    minutos,hrs =  modf(minutos/60)
+    minutos = round(minutos * 60)
+    hrs = round(hrs)
+
+    print(f"Required time was: {hrs}[hr] {minutos}[min] {segundos}[sec]")
